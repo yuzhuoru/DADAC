@@ -51,20 +51,6 @@ class ApproxContainer(torch.nn.Module):
 
 
 class DADAC:
-    """DADAC algorithm
-
-    Paper: https://ieeexplore.ieee.org/abstract/document/9448360
-
-    :param float gamma: discount factor.
-    :param float tau: param for soft update of target network.
-    :param bool auto_alpha: whether to adjust temperature automatically.
-    :param float alpha: initial temperature.
-    :param float TD_bound: the bound of temporal difference.
-    :param bool bound: whether to bound the q value.
-    :param float delay_update: delay update steps for actor.
-    :param Optional[float] target_entropy: target entropy for automatic
-        temperature adjustment.
-    """
 
     def __init__(self, **kwargs):
         super().__init__()
