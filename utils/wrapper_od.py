@@ -11,13 +11,6 @@ from utils.delay_distribution import DoubleGaussianDistribution, GamaDistributio
 
 
 class ObsDelayWrapper(gym.Wrapper):
-    """
-    Wrapper for any non-RTRL environment, modelling random observation delays
-    NB: alpha refers to the observation delay, it is >= 0
-    Kwargs:
-        obs_delay_range: range in which alpha is sampled
-        initial_action: action (default None): action with which the action buffer is filled at reset() (if None, sampled in the action space)
-    """
 
     def __init__(self, env, obs_delay="gama", initial_action=None, skip_initial_actions=False):
         super().__init__(env)
@@ -58,9 +51,6 @@ class ObsDelayWrapper(gym.Wrapper):
         return received_observation, {}
 
     def step(self, action):
-        """
-        Handles environment step with observation delay.
-        """
 
         # at the brain
         true_obs = action
@@ -74,49 +64,22 @@ class ObsDelayWrapper(gym.Wrapper):
             self.done_signal_sent = terminated or truncated
             self.send_observation((m, self.cum_rew_actor, terminated, truncated, info, 0))
 
-        # at the brain again
         m, cum_rew_actor_delayed, terminated, truncated, info = self.receive_observation()
         r = cum_rew_actor_delayed - self.cum_rew_brain
         self.cum_rew_brain = cum_rew_actor_delayed
-        '''
-        print("timestep:",self.t,"真实obs:", true_obs, " 收到obs:",m)
-        print("obs queue:",self.past_observations)
-        print("obs arrival queue:",self.arrival_times_observations)
-        '''
+
         self.t += 1
 
         return m, r, terminated, truncated, info
 
     def send_observation(self, obs):
-        """
-        Appends obs to the left of self.past_observations
-        Simulates the time at which it will reach the brain and appends it in self.arrival_times_observations
-        """
         alpha = self.obs_delay_dis.dis_sample()
         self.arrival_times_observations.appendleft(self.t + alpha)
         self.past_observations.appendleft(obs)
-        '''
-        print("------------send----------------")
-        print("t:",self.t,"  alpha:",alpha,"  t+alpha:",self.t + alpha)
-        print("arrval_obs_queue:",self.arrival_times_observations)
-        print("past_obs_queue:",self.past_observations)
-        '''
 
     def receive_observation(self):
-        """
-        Looks for the last created observation at the agent/observer that reached the brain at time t
-        NB: since this is the most recently created observation that the brain got, this is the one currently being considered as the last observation
-        Returns:
-            augmented_obs: tuple:
-                m: object: last observation that reached the brain
-                alpha: int: number of micro time steps it took the last observation to travel from the agent/observer to the brain
-        """
         alpha = next(i for i, t in enumerate(self.arrival_times_observations) if t <= self.t)
         
         m, r, terminated, truncated, info, _ = self.past_observations[alpha]
-        '''
-        print("------------receive----------------")
-        print("t:",self.t)
-        print("rec obs:",m)
-        '''
+
         return m, r, terminated, truncated, info
